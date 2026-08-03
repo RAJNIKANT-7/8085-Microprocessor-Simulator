@@ -16,4 +16,5 @@ architecture without needing physical hardware.
 The 8085 is a foundational microprocessor taught in most computer science and 
 electronics curricula. This simulator provides a hands-on, interactive way to 
 learn instruction sets and low-level programming concepts.
-![8085 Simulator Screenshot](C:\Users\RAJNIKANT\Pictures\Screenshots\Screenshot 2026-08-03 211341.png)
+
+![8085 Simulator Screenshot](screenshots/8085.png)
