@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>8085 M85 Virtual Trainer</title>
+<style>
+:root{
+  --chassis1:#3a3f44; --chassis2:#1e2124; --brass:#c9a45c; --brass-dk:#8a6f38;
+  --pcb:#0b3d24; --pcb-dk:#082d1a; --pcb-line:#145a35;
+  --led-bg:#160000; --led-off:#3a0a0a; --led-on:#ff3b30;
+  --key-face1:#2a2d31; --key-face2:#101214; --key-legend:#f0e6d6;
+  --key-blue1:#2f8fd6; --key-blue2:#0e578f;
+  --mono:'Courier New',ui-monospace,Consolas,monospace;
+  --disp:'Consolas','Courier New',monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at 50% -10%,#2a2e32,#0c0d0f 70%);color:#eee;font-family:Arial,Helvetica,sans-serif;min-height:100vh}
+.wrap{max-width:1320px;margin:auto;padding:22px 14px 40px}
+
+.nameplate{display:flex;align-items:baseline;gap:10px;justify-content:center;margin-bottom:14px}
+.nameplate .t1{font:800 22px/1 var(--mono);letter-spacing:4px;color:var(--brass);text-shadow:0 1px 0 #000}
+.nameplate .t2{font:600 11px/1 Arial;letter-spacing:3px;color:#9aa;text-transform:uppercase}
+
+.panel{position:relative;background:linear-gradient(155deg,var(--chassis1),var(--chassis2) 70%);padding:20px;border-radius:10px;box-shadow:0 25px 60px #000,inset 0 1px 0 #5a5f64,inset 0 -3px 8px #000}
+.rivet{position:absolute;width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#e8cf95,var(--brass-dk) 70%,#5c4620);box-shadow:0 1px 2px #000,inset 0 0 2px #000}
+.rivet.tl{top:9px;left:9px}.rivet.tr{top:9px;right:9px}.rivet.bl{bottom:9px;left:9px}.rivet.br{bottom:9px;right:9px}
+
+.credit{position:absolute;bottom:6px;right:14px;display:flex;align-items:center;gap:5px;font-size:9px;letter-spacing:.4px;color:#9aa0a4;opacity:.85;user-select:none}
+.credit svg{display:block;border-radius:1px;box-shadow:0 0 0 1px #000}
+
+.board{background:
+  repeating-linear-gradient(0deg,transparent 0 18px,var(--pcb-line) 18px 19px),
+  repeating-linear-gradient(90deg,transparent 0 18px,var(--pcb-line) 18px 19px),
+  linear-gradient(160deg,var(--pcb),var(--pcb-dk));
+  border:3px solid #063018;border-radius:6px;padding:16px;box-shadow:inset 0 2px 10px #000}
+
+.top{display:grid;grid-template-columns:1fr 2.6fr 1fr;gap:14px;align-items:stretch}
+.chip{background:#121212;border:2px solid #2c2c2c;border-radius:6px;text-align:center;padding:10px 8px;box-shadow:inset 0 0 14px #000,0 2px 4px #000;display:flex;flex-direction:column;justify-content:center;gap:4px;position:relative}
+.chip::before{content:"";position:absolute;left:10px;top:8px;width:6px;height:6px;border-radius:50%;background:#050505;box-shadow:inset 0 0 2px #000}
+.chip b{font:800 16px var(--mono);color:#e8e8e8;letter-spacing:1px}
+.chip .small{font-size:10px;color:#8fa08f;letter-spacing:1px}
+.pwr{display:flex;align-items:center;justify-content:center;gap:6px;font-size:9px;letter-spacing:1px;color:#7a8a7a;margin-top:4px}
+.led-dot{width:8px;height:8px;border-radius:50%;background:#1a1a1a;box-shadow:inset 0 0 2px #000}
+.led-dot.on.run{background:#39ff6a;box-shadow:0 0 6px 2px #39ff6a}
+.led-dot.on.halt{background:#ff3b30;box-shadow:0 0 6px 2px #ff3b30}
+
+.dispwrap{background:#0c0c0c;border:1px solid #333;border-radius:8px;padding:10px}
+.display{height:78px;background:var(--led-bg);border:6px solid #250000;border-radius:4px;padding:4px;display:flex;gap:3px;box-shadow:inset 0 0 20px #000}
+.digit{flex:1;background:#1a0000;color:var(--led-on);display:flex;align-items:center;justify-content:center;font:700 42px var(--disp);text-shadow:0 0 6px #ff3b30,0 0 16px #ff1000;border-radius:2px}
+.digit.data{color:#ffb020;text-shadow:0 0 6px #ffb020,0 0 16px #ff8000}
+.cap{display:flex;justify-content:space-between;font-size:10px;letter-spacing:2px;color:#9fae9f;margin-top:5px;padding:0 4px}
+
+.main{display:grid;grid-template-columns:1fr 1.5fr 1.15fr;gap:14px;margin-top:16px}
+.box{background:#082c1a;border:1px solid #1c6b3d;border-radius:6px;padding:12px;box-shadow:inset 0 1px 0 #1c6b3d}
+.box h3{font-size:11px;margin:0 0 9px;letter-spacing:2px;color:var(--brass);text-transform:uppercase;border-bottom:1px solid #1c6b3d;padding-bottom:6px}
+.regs{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+.reg{background:#03150a;border:1px solid #235238;border-radius:3px;padding:6px 7px;font:13px var(--mono);color:#bfe9c9}
+.reg b{color:#7dffa0}
+
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+button{cursor:pointer;font-family:Arial}
+button.key{min-height:56px;border:0;border-radius:7px;background:linear-gradient(var(--key-face1),var(--key-face2));color:var(--key-legend);font-weight:700;font-size:14px;line-height:1.25;white-space:pre-line;box-shadow:0 3px 0 #000,0 4px 6px #000,inset 0 1px 0 #4a4d51;border:1px solid #000;transition:transform .05s}
+button.key.blue{background:linear-gradient(var(--key-blue1),var(--key-blue2));color:#fff;box-shadow:0 3px 0 #06304e,0 4px 6px #000,inset 0 1px 0 #6bb8ee}
+button.key:hover{filter:brightness(1.12)}
+button.key:active{transform:translateY(3px);box-shadow:0 0 0 #000,inset 0 2px 6px #000}
+button.key.reg-armed{outline:2px solid var(--brass);outline-offset:1px}
+.tools{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.tools button{background:linear-gradient(#2c2f33,#17191b);color:#dfe6df;border:1px solid #444;border-radius:4px;padding:7px 11px;font-size:12px;font-weight:600;letter-spacing:.5px;box-shadow:0 2px 0 #000}
+.tools button:active{transform:translateY(1px);box-shadow:none}
+
+.status{margin-top:9px;background:#010b04;color:#7dffa0;border:1px solid #1c6b3d;border-radius:4px;padding:9px 10px;min-height:20px;font:12px var(--mono);letter-spacing:.3px}
+.help{font-size:11.5px;line-height:1.5;color:#c8d6ca;margin-top:8px}
+.help b{color:#e8f4ea}
+.keylegend{font-size:10.5px;color:#8fae94;margin-top:6px;line-height:1.5}
+
+input,textarea{background:#03150a;color:#c2ffd2;border:1px solid #2f7a4f;border-radius:4px;padding:6px;font-family:var(--mono)}
+textarea{width:100%;height:70px;font-size:12px}
+input#start{width:90px}
+
+.bottom{display:grid;grid-template-columns:1.3fr 1fr;gap:14px;margin-top:14px}
+.memtable{width:100%;border-collapse:collapse;font:10.5px var(--mono)}
+.memtable th,.memtable td{border:1px solid #1c4a30;padding:3px 2px;text-align:center;color:#bfe9c9}
+.memtable th{background:#0e3a22;color:var(--brass)}
+.memtable td.cur{background:#1c6b3d;color:#fff;font-weight:700;box-shadow:inset 0 0 0 1px #7dffa0}
+.console{height:132px;overflow:auto;background:#010b04;color:#7dffa0;padding:8px;font:11.5px var(--mono);white-space:pre-wrap;border:1px solid #1c6b3d;border-radius:4px}
+
+@media(max-width:900px){.top,.main,.bottom{grid-template-columns:1fr}.digit{font-size:30px}.nameplate .t1{font-size:17px}}
+
+/* ---- COMPACT CALCULATOR LAYOUT ---- */
+.wrap{max-width:360px;padding:14px 10px 24px}
+.panel{padding:12px}
+.board{padding:10px}
+.top{grid-template-columns:1fr}
+.dispwrap{padding:8px}
+.display{height:64px}
+.digit{font-size:30px}
+.main{grid-template-columns:1fr;gap:10px;margin-top:10px}
+.status{font-size:11px;padding:6px 8px}
+.keys{gap:6px}
+button.key{min-height:46px;font-size:12px}
+</style>
+</head>
+<body><div class="wrap">
+
+<div class="nameplate" style="display:none"><span class="t1">M85 &middot; MICROPROCESSOR TRAINING SYSTEM</span><span class="t2">8085 CPU &middot; 64K RAM &middot; VIRTUAL PANEL</span></div>
+
+<div class="panel">
+<div class="rivet tl" style="display:none"></div><div class="rivet tr" style="display:none"></div><div class="rivet bl" style="display:none"></div><div class="rivet br" style="display:none"></div>
+<div class="credit" title="Developed by Rajnikant" style="">
+  <svg width="18" height="12" viewBox="0 0 18 12" xmlns="http://www.w3.org/2000/svg">
+    <rect width="18" height="4" y="0" fill="#FF9933"/>
+    <rect width="18" height="4" y="4" fill="#FFFFFF"/>
+    <rect width="18" height="4" y="8" fill="#138808"/>
+    <circle cx="9" cy="6" r="1.5" fill="none" stroke="#000080" stroke-width="0.3"/>
+    <circle cx="9" cy="6" r="0.3" fill="#000080"/>
+  </svg>
+  <span>Developed by Rajnikant</span>
+</div>
+<div class="board">
+
+<div class="top">
+<div class="chip" style="display:none"><b>8253</b><span class="small">TIMER / COUNTER</span>
+  <div class="pwr"><span class="led-dot" id="ledPwr"></span>POWER</div></div>
+<div class="dispwrap"><div class="display" id="display"></div>
+  <div class="cap"><span>ADDRESS</span><span>DATA</span></div></div>
+<div class="chip" style="display:none"><b>8085</b><span class="small">CPU</span>
+  <div class="pwr"><span class="led-dot" id="ledRun"></span>RUN&nbsp;&nbsp;<span class="led-dot" id="ledHalt"></span>HALT</div></div>
+</div>
+
+<div class="main">
+<div class="box" style="display:none"><h3>8085 Registers</h3><div id="regs" class="regs"></div>
+<h3 style="margin-top:12px">Flags &nbsp;S&nbsp;Z&nbsp;AC&nbsp;P&nbsp;CY</h3><div id="flags" class="reg"></div>
+<h3 style="margin-top:12px">Trainer State</h3><div id="state" class="reg"></div></div>
+
+<div class="box"><h3 style="display:none">Keyboard</h3><div id="keys" class="keys"></div>
+<div id="status" class="status">READY</div>
+<p class="help" style="display:none">
+<b>Enter a program, e.g. 2000-200E:</b> RESET → type <b>2000</b> → <b>MEMC NEXT</b> selects 2000H → type 2 data digits → <b>MEMC NEXT</b> stores the byte AND advances to 2001H (no need to press INS DATA every time — just like the real kit). Repeat for every byte up to 200E.<br>
+<b>Run it:</b> type the start address → <b>MEMC NEXT</b> to select it → <b>GO</b>. The result lands wherever your program stores it (e.g. STA 3000H).<br>
+<b>Check the result:</b> type <b>3000</b> → <b>MEMC NEXT</b> — the DATA display shows what's stored there.<br>
+<b>Examine / modify a register:</b> press <b>EXREG SI</b>, then press the matching key below. 2 digits + <b>INS DATA</b> changes it, <b>MEMC NEXT</b> steps to the next register. Press <b>EXREG SI</b> again to return to address mode.<br>
+<b>FILL:</b> press <b>FILL</b> → key in the 2-digit byte value → <b>MEMC NEXT</b> → key in the end address → <b>MEMC NEXT</b> (or GO) fills the range. No popups — everything is keyed in.<br>
+<b>REL EXMEM:</b> press it → key in a 2-digit hex offset (00-7F=+, 80-FF=-) → <b>MEMC NEXT</b> jumps the address that far.<br>
+<b>STRING PRE:</b> drops you straight into data entry at the current address — key in bytes with digits + <b>MEMC NEXT</b> just like normal entry.<br>
+<b>DEL DATA</b> also cancels a FILL/REL EXMEM in progress and returns to DATA mode.<br>
+<b>RESET does not erase memory.</b> Use <b>CLEAR MEMORY</b> to zero all 64K.
+</p>
+<div class="keylegend" style="display:none">EXAM REG map — 4:PCH 5:PCL 6:SPH 7:SPL 8:H 9:L A:A B:B C:C D:D E:E F:FLAGS</div>
+</div>
+
+<div class="box" style="display:none"><h3>Program</h3>
+<div>Start address <input id="start" value="2000" maxlength="4" size="6"></div>
+<div class="tools"><button onclick="writeProgram()">WRITE</button><button onclick="demo()">DEMO</button><button onclick="go()">GO</button><button onclick="step()">STEP</button><button onclick="stop()">STOP</button></div>
+<textarea id="program" spellcheck="false">3E 05 06 03 80 32 00 30 76</textarea>
+<div class="tools"><button onclick="clearMemory()">CLEAR MEMORY</button><button onclick="reset()">RESET</button></div>
+<p class="help">Demo: MVI A,05H · MVI B,03H · ADD B · STA 3000H · HLT — result 08H is stored at 3000H.</p>
+</div></div>
+
+<div class="bottom" style="display:none"><div class="box"><h3>Memory (16 bytes/row, centered on selected address)</h3><div id="mem"></div></div>
+<div class="box"><h3>Console</h3><div id="console" class="console"></div>
+<div class="tools"><button onclick="vint()">VCT INT</button><button onclick="serial()">SER (SOD)</button><button onclick="clearConsole()">CLEAR</button></div></div></div>
+
+</div></div></div>
+
+<script>
+"use strict";
+
+/* ---------------- CPU CORE ---------------- */
+const cpu={A:0,B:0,C:0,D:0,E:0,H:0,L:0,F:0,PC:0x2000,SP:0xffff,mem:new Uint8Array(65536),ports:new Uint8Array(256),halted:false,running:false,inte:true};
+const hx=n=>(n&255).toString(16).toUpperCase().padStart(2,"0");
+const hw=n=>(n&65535).toString(16).toUpperCase().padStart(4,"0");
+const flag=(m,v)=>v?cpu.F|=m:cpu.F&=~m, gf=m=>(cpu.F&m)?1:0;
+// S=0x80 Z=0x40 AC=0x10 P=0x04 CY=0x01
+const bc=()=>cpu.B<<8|cpu.C, de=()=>cpu.D<<8|cpu.E, hl=()=>cpu.H<<8|cpu.L;
+function setBC(v){cpu.B=v>>8&255;cpu.C=v&255} function setDE(v){cpu.D=v>>8&255;cpu.E=v&255} function setHL(v){cpu.H=v>>8&255;cpu.L=v&255}
+function parityEven(v){let n=0;for(let i=0;i<8;i++)n+=(v>>i)&1;return n%2===0}
+function szp(v){v&=255;flag(128,!!(v&128));flag(64,v===0);flag(4,parityEven(v))}
+function add(a,b,c=0){let r=a+b+c;flag(1,r>255);flag(16,((a&15)+(b&15)+c)>15);szp(r);return r&255}
+function sub(a,b,c=0){let r=a-b-c;flag(1,r<0);flag(16,((a&15)-(b&15)-c)<0);szp(r);return r&255}
+function push(v){cpu.mem[(cpu.SP-1)&65535]=v>>8&255;cpu.mem[(cpu.SP-2)&65535]=v&255;cpu.SP=(cpu.SP-2)&65535}
+function pop(){let l=cpu.mem[cpu.SP],h=cpu.mem[(cpu.SP+1)&65535];cpu.SP=(cpu.SP+2)&65535;return h<<8|l}
+function imm8(){let v=cpu.mem[cpu.PC];cpu.PC=(cpu.PC+1)&65535;return v}
+function imm16(){let l=imm8(),h=imm8();return l|h<<8}
+function rg(i){return [cpu.B,cpu.C,cpu.D,cpu.E,cpu.H,cpu.L,cpu.mem[hl()],cpu.A][i]}
+function sr(i,v){v&=255;if(i===0)cpu.B=v;else if(i===1)cpu.C=v;else if(i===2)cpu.D=v;else if(i===3)cpu.E=v;else if(i===4)cpu.H=v;else if(i===5)cpu.L=v;else if(i===6)cpu.mem[hl()]=v;else cpu.A=v}
+function cond(c){return [!gf(64),!!gf(64),!gf(1),!!gf(1),!gf(4),!!gf(4),!gf(128),!!gf(128)][c]}
+
+const RA={
+ B:[()=>cpu.B,v=>cpu.B=v&255], C:[()=>cpu.C,v=>cpu.C=v&255],
+ D:[()=>cpu.D,v=>cpu.D=v&255], E:[()=>cpu.E,v=>cpu.E=v&255],
+ H:[()=>cpu.H,v=>cpu.H=v&255], L:[()=>cpu.L,v=>cpu.L=v&255],
+ M:[()=>cpu.mem[hl()],v=>cpu.mem[hl()]=v&255], A:[()=>cpu.A,v=>cpu.A=v&255]
+};
+function doInr(get,set){let cy=gf(1),v=get(),r=(v+1)&255;flag(16,(v&15)===15);szp(r);flag(1,cy);set(r)}
+function doDcr(get,set){let cy=gf(1),v=get(),r=(v-1)&255;flag(16,(v&15)!==0);szp(r);flag(1,cy);set(r)}
+function dad(v){let r=hl()+v;flag(1,r>0xffff);setHL(r&0xffff)}
+
+function execute(){
+ let op=cpu.mem[cpu.PC];cpu.PC=(cpu.PC+1)&65535;
+
+ // MOV r,r' / HLT
+ if(op>=64&&op<=127){if(op===118){cpu.halted=true;return}sr(op>>3&7,rg(op&7));return}
+ // ALU r
+ if(op>=128&&op<=135){cpu.A=add(cpu.A,rg(op&7));return}                       // ADD
+ if(op>=136&&op<=143){cpu.A=add(cpu.A,rg(op&7),gf(1));return}                 // ADC
+ if(op>=144&&op<=151){cpu.A=sub(cpu.A,rg(op&7));return}                       // SUB
+ if(op>=152&&op<=159){cpu.A=sub(cpu.A,rg(op&7),gf(1));return}                 // SBB
+ if(op>=160&&op<=167){cpu.A&=rg(op&7);cpu.F=0;flag(16,1);szp(cpu.A);return}   // ANA
+ if(op>=168&&op<=175){cpu.A^=rg(op&7);cpu.F=0;szp(cpu.A);return}              // XRA
+ if(op>=176&&op<=183){cpu.A|=rg(op&7);cpu.F=0;szp(cpu.A);return}              // ORA
+ if(op>=184&&op<=191){sub(cpu.A,rg(op&7));return}                             // CMP
+
+ switch(op){
+  case 0x00: break; // NOP
+  case 0x01: setBC(imm16()); break;                       // LXI B
+  case 0x02: cpu.mem[bc()]=cpu.A; break;                   // STAX B
+  case 0x03: setBC((bc()+1)&65535); break;                 // INX B
+  case 0x04: doInr(...RA.B); break;                        // INR B
+  case 0x05: doDcr(...RA.B); break;                        // DCR B
+  case 0x06: cpu.B=imm8(); break;                           // MVI B
+  case 0x07: {let c=(cpu.A>>7)&1; cpu.A=((cpu.A<<1)|c)&255; flag(1,c);} break; // RLC
+  case 0x09: dad(bc()); break;                              // DAD B
+  case 0x0A: cpu.A=cpu.mem[bc()]; break;                    // LDAX B
+  case 0x0B: setBC((bc()-1)&65535); break;                  // DCX B
+  case 0x0C: doInr(...RA.C); break;                         // INR C
+  case 0x0D: doDcr(...RA.C); break;                         // DCR C
+  case 0x0E: cpu.C=imm8(); break;                            // MVI C
+  case 0x0F: {let c=cpu.A&1; cpu.A=((cpu.A>>1)|(c<<7))&255; flag(1,c);} break; // RRC
+
+  case 0x11: setDE(imm16()); break;                         // LXI D
+  case 0x12: cpu.mem[de()]=cpu.A; break;                    // STAX D
+  case 0x13: setDE((de()+1)&65535); break;                  // INX D
+  case 0x14: doInr(...RA.D); break;                         // INR D
+  case 0x15: doDcr(...RA.D); break;                         // DCR D
+  case 0x16: cpu.D=imm8(); break;                            // MVI D
+  case 0x17: {let c=(cpu.A>>7)&1; cpu.A=((cpu.A<<1)|gf(1))&255; flag(1,c);} break; // RAL
+  case 0x19: dad(de()); break;                              // DAD D
+  case 0x1A: cpu.A=cpu.mem[de()]; break;                    // LDAX D
+  case 0x1B: setDE((de()-1)&65535); break;                  // DCX D
+  case 0x1C: doInr(...RA.E); break;                         // INR E
+  case 0x1D: doDcr(...RA.E); break;                         // DCR E
+  case 0x1E: cpu.E=imm8(); break;                            // MVI E
+  case 0x1F: {let c=cpu.A&1; cpu.A=((cpu.A>>1)|(gf(1)<<7))&255; flag(1,c);} break; // RAR
+
+  case 0x20: cpu.A=cpu.inte?0x08:0x00; break;               // RIM (simplified: IE on bit3)
+  case 0x21: setHL(imm16()); break;                         // LXI H
+  case 0x22: {let p=imm16(); cpu.mem[p]=cpu.L; cpu.mem[(p+1)&65535]=cpu.H;} break; // SHLD
+  case 0x23: setHL((hl()+1)&65535); break;                  // INX H
+  case 0x24: doInr(...RA.H); break;                         // INR H
+  case 0x25: doDcr(...RA.H); break;                         // DCR H
+  case 0x26: cpu.H=imm8(); break;                            // MVI H
+  case 0x27: { // DAA
+    let a=cpu.A,cy=gf(1),ac=gf(16),corr=0,newcy=cy;
+    let lo=a&0x0F;
+    if(lo>9||ac){corr+=0x06; ac=((lo+6)>15)?1:0;} else ac=0;
+    a=(a+corr)&0xFF;
+    let hiCheck=(a>>4)&0x0F;
+    if(hiCheck>9||cy){a=(a+0x60)&0xFF; newcy=1;}
+    flag(16,ac); flag(1,newcy); szp(a); cpu.A=a;
+  } break;
+  case 0x29: dad(hl()); break;                              // DAD H
+  case 0x2A: {let p=imm16(); cpu.L=cpu.mem[p]; cpu.H=cpu.mem[(p+1)&65535];} break; // LHLD
+  case 0x2B: setHL((hl()-1)&65535); break;                  // DCX H
+  case 0x2C: doInr(...RA.L); break;                         // INR L
+  case 0x2D: doDcr(...RA.L); break;                         // DCR L
+  case 0x2E: cpu.L=imm8(); break;                            // MVI L
+  case 0x2F: cpu.A=(~cpu.A)&255; break;                     // CMA
+
+  case 0x30: break;                                          // SIM (simplified no-op)
+  case 0x31: cpu.SP=imm16(); break;                          // LXI SP
+  case 0x32: {let p=imm16(); cpu.mem[p]=cpu.A;} break;       // STA
+  case 0x33: cpu.SP=(cpu.SP+1)&65535; break;                 // INX SP
+  case 0x34: doInr(...RA.M); break;                          // INR M
+  case 0x35: doDcr(...RA.M); break;                          // DCR M
+  case 0x36: cpu.mem[hl()]=imm8(); break;                    // MVI M
+  case 0x37: flag(1,1); break;                               // STC
+  case 0x39: dad(cpu.SP); break;                             // DAD SP
+  case 0x3A: {let p=imm16(); cpu.A=cpu.mem[p];} break;       // LDA
+  case 0x3B: cpu.SP=(cpu.SP-1)&65535; break;                 // DCX SP
+  case 0x3C: doInr(...RA.A); break;                          // INR A
+  case 0x3D: doDcr(...RA.A); break;                          // DCR A
+  case 0x3E: cpu.A=imm8(); break;                             // MVI A
+  case 0x3F: flag(1,!gf(1)); break;                          // CMC
+
+  case 0xC1: setBC(pop()); break;                            // POP B
+  case 0xC3: cpu.PC=imm16(); break;                          // JMP
+  case 0xC5: push(bc()); break;                              // PUSH B
+  case 0xC6: cpu.A=add(cpu.A,imm8()); break;                 // ADI
+  case 0xC9: cpu.PC=pop(); break;                            // RET
+  case 0xCD: {let p=imm16(); push(cpu.PC); cpu.PC=p;} break; // CALL
+  case 0xCE: cpu.A=add(cpu.A,imm8(),gf(1)); break;           // ACI
+
+  case 0xD1: setDE(pop()); break;                            // POP D
+  case 0xD3: cpu.ports[imm8()]=cpu.A; break;                 // OUT
+  case 0xD5: push(de()); break;                              // PUSH D
+  case 0xD6: cpu.A=sub(cpu.A,imm8()); break;                 // SUI
+  case 0xDB: cpu.A=cpu.ports[imm8()]; break;                 // IN
+  case 0xDE: cpu.A=sub(cpu.A,imm8(),gf(1)); break;           // SBI
+
+  case 0xE1: setHL(pop()); break;                            // POP H
+  case 0xE3: {let l=cpu.mem[cpu.SP],h=cpu.mem[(cpu.SP+1)&65535]; cpu.mem[cpu.SP]=cpu.L; cpu.mem[(cpu.SP+1)&65535]=cpu.H; cpu.L=l; cpu.H=h;} break; // XTHL
+  case 0xE5: push(hl()); break;                              // PUSH H
+  case 0xE6: cpu.A&=imm8(); cpu.F=0; flag(16,1); szp(cpu.A); break; // ANI
+  case 0xE9: cpu.PC=hl(); break;                              // PCHL
+  case 0xEB: {let t=de(); setDE(hl()); setHL(t);} break;      // XCHG
+  case 0xEE: cpu.A^=imm8(); cpu.F=0; szp(cpu.A); break;       // XRI
+
+  case 0xF1: {let v=pop(); cpu.A=v>>8&255; cpu.F=v&0xD7|0x02;} break; // POP PSW
+  case 0xF3: cpu.inte=false; break;                           // DI
+  case 0xF5: push(cpu.A<<8|(cpu.F&0xD7|0x02)); break;          // PUSH PSW
+  case 0xF6: cpu.A|=imm8(); cpu.F=0; szp(cpu.A); break;        // ORI
+  case 0xF9: cpu.SP=hl(); break;                               // SPHL
+  case 0xFB: cpu.inte=true; break;                             // EI
+  case 0xFE: sub(cpu.A,imm8()); break;                         // CPI
+  case 0xFF: push(cpu.PC); cpu.PC=0x38; break;                 // RST 7 (also matched below; kept for clarity)
+
+  default:
+   if((op&199)===194){let c=op>>3&7,p=imm16();if(cond(c))cpu.PC=p;}                    // Jcond
+   else if((op&199)===196){let c=op>>3&7,p=imm16();if(cond(c)){push(cpu.PC);cpu.PC=p;}} // Ccond
+   else if((op&199)===199){push(cpu.PC);cpu.PC=(op>>3&7)*8;}                            // RST n
+   else if((op&199)===192){let c=op>>3&7;if(cond(c))cpu.PC=pop();}                      // Rcond
+   else if((op&207)===193){let r=op>>4&3,v=pop();if(r===0)setBC(v);else if(r===1)setDE(v);else if(r===2)setHL(v);else{cpu.A=v>>8&255;cpu.F=v&0xD7|0x02;}} // POP rp
+   else if((op&207)===197){let r=op>>4&3;push(r===0?bc():r===1?de():r===2?hl():(cpu.A<<8|(cpu.F&0xD7|0x02)));} // PUSH rp
+   else if((op&199)===6)sr(op>>3&7,imm8());                                             // MVI r
+   // remaining undocumented opcodes (08,10,18,28,38,CB,D9,DD,ED,FD) behave as NOP on real silicon
+   break;
+ }
+}
+
+/* ---------------- PANEL / KEYBOARD STATE ---------------- */
+let mode="ADDRESS";      // ADDRESS | DATA | REGSEL | REGDATA | FILLVAL | FILLEND | RELOFF
+let buf="", addr=0x0000, timer=null;
+let regSel=null;
+let fillValG=0;
+const regOrder=["PCH","PCL","SPH","SPL","H","L","A","B","C","D","E","FLAGS"];
+const regKeyMap={"4":"PCH","5":"PCL","6":"SPH","7":"SPL","8":"H","9":"L","A":"A","B":"B","C":"C","D":"D","E":"E","F":"FLAGS"};
+const RG={
+ PCH:[()=>cpu.PC>>8&255, v=>cpu.PC=(cpu.PC&0x00FF)|(v<<8)],
+ PCL:[()=>cpu.PC&255,    v=>cpu.PC=(cpu.PC&0xFF00)|v],
+ SPH:[()=>cpu.SP>>8&255, v=>cpu.SP=(cpu.SP&0x00FF)|(v<<8)],
+ SPL:[()=>cpu.SP&255,    v=>cpu.SP=(cpu.SP&0xFF00)|v],
+ H:[()=>cpu.H, v=>cpu.H=v], L:[()=>cpu.L, v=>cpu.L=v], A:[()=>cpu.A, v=>cpu.A=v],
+ B:[()=>cpu.B, v=>cpu.B=v], C:[()=>cpu.C, v=>cpu.C=v], D:[()=>cpu.D, v=>cpu.D=v], E:[()=>cpu.E, v=>cpu.E=v],
+ FLAGS:[()=>cpu.F, v=>cpu.F=v]
+};
+
+const keyDefs=[
+ ["RESET","blue"],["VCT INT","blue"],["SHIFT","blue"],["C","","C"],
+ ["EXREG SI","blue"],["INS DATA","blue"],["DEL DATA","blue"],["D","","D"],
+ ["GO","blue"],["B M","blue"],["REL EXMEM","blue"],["E","","E"],
+ ["STRING PRE","blue"],["MEMC NEXT","blue"],["FILL","blue"],["F\nFLAGS","","F"],
+ ["8\nH","","8"],["9\nL","","9"],["A","","A"],["B","","B"],
+ ["4\nPCH","","4"],["5\nPCL","","5"],["6\nSPH","","6"],["7\nSPL","","7"],
+ ["0","","0"],["1","","1"],["2","","2"],["3","","3"]
+];
+const keyContainer=document.getElementById("keys");
+keyContainer.innerHTML="";
+keyDefs.forEach(([label,cls,value])=>{
+ const btn=document.createElement("button");
+ btn.type="button";
+ btn.className="key "+cls;
+ btn.textContent=label;
+ btn.dataset.value=value||label;
+ btn.addEventListener("click",function(ev){
+   ev.preventDefault(); ev.stopPropagation();
+   press(btn.dataset.value);
+ });
+ keyContainer.appendChild(btn);
+});
+
+function press(k){
+ k=String(k).trim().toUpperCase();
+
+ if(k==="RESET"){reset();return}
+ if(k==="SHIFT"){toggleRegSel();return}
+ if(k==="EXREG SI"){toggleRegSel();return}
+ if(k==="MEMC NEXT"){nextKey();return}
+ if(k==="INS DATA"){insData();return}
+ if(k==="DEL DATA"){delData();return}
+ if(k==="GO"){go();return}
+ if(k==="VCT INT"){vint();render();return}
+ if(k==="SER"){serial();render();return}
+ if(k==="FILL"){fill();return}
+ if(k==="B M"){mode="ADDRESS";buf="";regSel=null;status("B M — ADDRESS ENTRY MODE");render();return}
+ if(k==="REL EXMEM"){relExMem();return}
+ if(k==="STRING PRE"){stringPre();return}
+
+ if(k.length===1 && "0123456789ABCDEF".includes(k)){ digit(k); return; }
+ status(k+" pressed");
+ render();
+}
+
+function toggleRegSel(){
+ if(mode==="REGSEL"||mode==="REGDATA"){
+   mode="ADDRESS"; buf=""; regSel=null;
+   status("EXAM REG OFF — ADDRESS ENTRY MODE");
+ }else{
+   mode="REGSEL"; buf=""; regSel=null;
+   status("EXAM REG — press a register key (4-9,A-F)");
+ }
+ render();
+}
+
+function digit(k){
+ if(mode==="ADDRESS"){
+   if(buf.length>=4) buf="";
+   buf+=k;
+   status("ADDRESS ENTRY: "+buf.padStart(4,"0")+"H — press MEMC NEXT");
+   render();
+   return;
+ }
+ if(mode==="DATA"){
+   if(buf.length>=2) buf="";
+   buf+=k;
+   status("DATA ENTRY: "+buf.padStart(2,"0")+"H at "+hw(addr)+"H — press INS DATA");
+   render();
+   return;
+ }
+ if(mode==="REGSEL"){
+   const name=regKeyMap[k];
+   if(!name){ status(k+" is not a register key — use 4-9,A-F"); render(); return; }
+   selectRegister(name);
+   return;
+ }
+ if(mode==="REGDATA"){
+   if(buf.length>=2) buf="";
+   buf+=k;
+   status("DATA ENTRY: "+buf.padStart(2,"0")+"H for "+regSel+" — press INS DATA");
+   render();
+   return;
+ }
+ if(mode==="FILLVAL"){
+   if(buf.length>=2) buf="";
+   buf+=k;
+   status("FILL: value "+buf.padStart(2,"0")+"H — press MEMC NEXT to confirm");
+   render();
+   return;
+ }
+ if(mode==="FILLEND"){
+   if(buf.length>=4) buf="";
+   buf+=k;
+   status("FILL: end address "+buf.padStart(4,"0")+"H — press MEMC NEXT / GO to fill "+hw(addr)+"H.."+buf.padStart(4,"0")+"H");
+   render();
+   return;
+ }
+ if(mode==="RELOFF"){
+   if(buf.length>=2) buf="";
+   buf+=k;
+   status("REL EXMEM: offset "+buf.padStart(2,"0")+"H — press MEMC NEXT to jump");
+   render();
+   return;
+ }
+}
+
+function selectRegister(name){
+ regSel=name; mode="REGDATA"; buf="";
+ status("EXAM REG → "+name+" = "+hx(RG[name][0]()));
+ render();
+}
+
+function nextKey(){
+ if(confirmAux()) return;
+ if(mode==="ADDRESS"){
+   if(buf.length!==4){ status("MEMC NEXT: enter 4-digit address first"); render(); return; }
+   addr=parseInt(buf,16); cpu.PC=addr; buf=""; mode="DATA";
+   status("MEMC NEXT → ADDRESS "+hw(addr)+"H SELECTED");
+   render(); return;
+ }
+ if(mode==="DATA"){
+   // Real kit behavior: if a byte has been keyed in, NEXT stores it at the
+   // current address AND advances — you don't need a separate INS DATA press.
+   let saved=false;
+   if(/^[0-9A-Fa-f]{1,2}$/.test(buf)){ cpu.mem[addr]=parseInt(buf,16); saved=true; }
+   addr=(addr+1)&65535; cpu.PC=addr; buf="";
+   status(saved?("MEMC NEXT → stored, now "+hw(addr)+"H"):("MEMC NEXT → "+hw(addr)+"H"));
+   render(); return;
+ }
+ if(mode==="REGSEL"){ status("Select a register first (4-9,A-F)"); render(); return; }
+ if(mode==="REGDATA"){
+   // Same real-kit behavior for registers: NEXT stores a keyed-in value first.
+   if(/^[0-9A-Fa-f]{1,2}$/.test(buf)){ RG[regSel][1](parseInt(buf,16)); }
+   let i=regOrder.indexOf(regSel);
+   regSel=regOrder[(i+1)%regOrder.length];
+   buf="";
+   status("MEMC NEXT → "+regSel+" = "+hx(RG[regSel][0]()));
+   render(); return;
+ }
+}
+
+function insData(){
+ if(confirmAux()) return;
+ if(mode==="DATA"){
+   if(!/^[0-9A-Fa-f]{1,2}$/.test(buf)){ status("INS DATA: enter data digits first"); return; }
+   const n=parseInt(buf,16); cpu.mem[addr]=n; buf="";
+   status("INS DATA → "+hw(addr)+"H = "+hx(n)+"H");
+   render(); return;
+ }
+ if(mode==="REGDATA"){
+   if(!/^[0-9A-Fa-f]{1,2}$/.test(buf)){ status("INS DATA: enter data digits first"); return; }
+   const n=parseInt(buf,16); RG[regSel][1](n); buf="";
+   status("INS DATA → "+regSel+" = "+hx(n)+"H");
+   render(); return;
+ }
+ status("INS DATA: select an address or register first");
+}
+
+function delData(){
+ if(mode==="FILLVAL"||mode==="FILLEND"||mode==="RELOFF"){
+   mode="DATA"; buf=""; status("Cancelled — back to DATA mode at "+hw(addr)+"H"); render(); return;
+ }
+ if(mode==="DATA"){ cpu.mem[addr]=0; buf=""; status("DEL DATA → "+hw(addr)+"H cleared"); render(); return; }
+ if(mode==="REGDATA"){ RG[regSel][1](0); buf=""; status("DEL DATA → "+regSel+" cleared"); render(); return; }
+ status("DEL DATA: select an address or register first");
+}
+
+function relExMem(){
+ // Real kit: no popup. Press REL EXMEM, key in a 2-digit hex offset on the
+ // keypad, then press MEMC NEXT / INS DATA / GO to jump.
+ mode="RELOFF"; buf="";
+ status("REL EXMEM — key in 2-digit hex offset (00-7F=+, 80-FF=-), then MEMC NEXT");
+ render();
+}
+
+function stringPre(){
+ // Real kit: STRING PRE just drops you into normal data-entry at the current
+ // address so you can key in a run of bytes with digits + MEMC NEXT.
+ mode="DATA"; buf="";
+ status("STRING PRE — key in bytes at "+hw(addr)+"H: 2 digits + MEMC NEXT stores & advances");
+ render();
+}
+
+// Shared confirm step for the keypad-driven FILL / REL EXMEM sequences.
+// Returns true if it handled the key (caller should stop), false otherwise.
+function confirmAux(){
+ if(mode==="FILLVAL"){
+   if(!/^[0-9A-Fa-f]{1,2}$/.test(buf)){ status("FILL: key in a 2-digit byte value first"); render(); return true; }
+   fillValG=parseInt(buf,16); buf=""; mode="FILLEND";
+   status("FILL: value "+hx(fillValG)+"H set — key in end address, then MEMC NEXT / GO to fill");
+   render(); return true;
+ }
+ if(mode==="FILLEND"){
+   if(!/^[0-9A-Fa-f]{1,4}$/.test(buf)){ status("FILL: key in the end address (4 digits) first"); render(); return true; }
+   const endA=parseInt(buf,16);
+   const lo=Math.min(addr,endA), hi=Math.max(addr,endA);
+   for(let a=lo;a<=hi;a++) cpu.mem[a]=fillValG;
+   buf=""; mode="DATA"; addr=lo; cpu.PC=addr;
+   status("FILL "+hw(lo)+"H.."+hw(hi)+"H = "+hx(fillValG)+"H");
+   render(); return true;
+ }
+ if(mode==="RELOFF"){
+   if(!/^[0-9A-Fa-f]{1,2}$/.test(buf)){ status("REL EXMEM: key in a 2-digit offset first"); render(); return true; }
+   const raw=parseInt(buf,16), off=raw>0x7F?raw-0x100:raw;
+   addr=(addr+off)&65535; cpu.PC=addr; buf=""; mode="DATA";
+   status("REL EXMEM → "+hw(addr)+"H (offset "+(off>=0?"+":"")+off+")");
+   render(); return true;
+ }
+ return false;
+}
+
+function status(s){document.getElementById("status").textContent=s;log(s)}
+function log(s){let c=document.getElementById("console");c.textContent+=(c.textContent?"\n":"")+s;c.scrollTop=c.scrollHeight}
+
+/* ---------------- RENDER ---------------- */
+function render(){
+ const r={A:hx(cpu.A),F:hx(cpu.F),B:hx(cpu.B),C:hx(cpu.C),D:hx(cpu.D),E:hx(cpu.E),H:hx(cpu.H),L:hx(cpu.L),PC:hw(cpu.PC),SP:hw(cpu.SP)};
+ document.getElementById("regs").innerHTML=Object.entries(r).map(([k,v])=>`<div class="reg">${k} = <b>${v}</b></div>`).join("");
+ document.getElementById("flags").textContent=`${gf(128)}   ${gf(64)}   ${gf(16)}    ${gf(4)}   ${gf(1)}`;
+ document.getElementById("state").innerHTML=`MODE = ${mode}${regSel?(" ("+regSel+")"):""}<br>ENTRY = ${buf||"—"}<br>ADDRESS = ${hw(addr)}H<br>PC = ${hw(cpu.PC)}H &nbsp; SP = ${hw(cpu.SP)}H<br>HALT = ${cpu.halted?"YES":"NO"} &nbsp; INTE = ${cpu.inte?"YES":"NO"}`;
+
+ document.getElementById("ledRun").className="led-dot"+(cpu.running?" on run":"");
+ document.getElementById("ledHalt").className="led-dot"+(cpu.halted?" on halt":"");
+ document.getElementById("ledPwr").className="led-dot on run";
+
+ let addressText,dataText;
+ if(mode==="ADDRESS"){
+   addressText=(buf||"").padStart(4,"0").slice(-4);
+   dataText="00";
+ }else if(mode==="DATA"){
+   addressText=hw(addr);
+   dataText=(buf && /^[0-9A-Fa-f]{1,2}$/.test(buf)) ? buf.padStart(2,"0").slice(-2) : hx(cpu.mem[addr]);
+ }else if(mode==="REGSEL"){
+   addressText="SEL.";
+   dataText="--";
+ }else if(mode==="REGDATA"){
+   addressText=(regSel||"").padStart(4," ").slice(0,4);
+   dataText=(buf && /^[0-9A-Fa-f]{1,2}$/.test(buf)) ? buf.padStart(2,"0").slice(-2) : hx(RG[regSel][0]());
+ }else if(mode==="FILLVAL"){
+   addressText="FILL";
+   dataText=(buf && /^[0-9A-Fa-f]{1,2}$/.test(buf)) ? buf.padStart(2,"0").slice(-2) : "--";
+ }else if(mode==="FILLEND"){
+   addressText=(buf||"").padStart(4,"0").slice(-4);
+   dataText=hx(fillValG);
+ }else{ // RELOFF
+   addressText="rOFF";
+   dataText=(buf && /^[0-9A-Fa-f]{1,2}$/.test(buf)) ? buf.padStart(2,"0").slice(-2) : "--";
+ }
+ const screen=(addressText+dataText).padEnd(6," ").slice(0,6);
+ const disp=document.getElementById("display");
+ disp.innerHTML="";
+ for(let i=0;i<6;i++){
+   const d=document.createElement("div");
+   d.className="digit"+(i>=4?" data":"");
+   d.textContent=screen[i]===" "?"":screen[i];
+   disp.appendChild(d);
+ }
+
+ let base=addr&65520;
+ let s="<table class='memtable'><tr><th>ADDR</th>"+Array.from({length:16},(_,i)=>`<th>${hx(i)}</th>`).join("")+"</tr>";
+ for(let row=0;row<8;row++){
+   let aa=(base+row*16)&65535;
+   s+=`<tr><th>${hw(aa)}</th>`+Array.from({length:16},(_,i)=>{
+     let a2=(aa+i)&65535;
+     return `<td${a2===addr?" class='cur'":""}>${hx(cpu.mem[a2])}</td>`;
+   }).join("")+"</tr>";
+ }
+ s+="</table>";
+ document.getElementById("mem").innerHTML=s;
+}
+
+/* ---------------- CONTROLS ---------------- */
+function reset(){
+ // Real trainer behavior: RESET clears CPU/control state and returns to address entry.
+ // It does NOT clear RAM — existing memory/program/data remain intact.
+ stop();
+ cpu.A=cpu.B=cpu.C=cpu.D=cpu.E=cpu.H=cpu.L=cpu.F=0;
+ cpu.PC=0x2000; cpu.SP=0xffff; cpu.halted=false; cpu.inte=true;
+ addr=0; buf=""; mode="ADDRESS"; regSel=null; fillValG=0;
+ document.getElementById("start").value="2000";
+ status("RESET — CPU RESET; MEMORY RETAINED — 0000 00");
+ render();
+}
+function writeProgram(){
+ let s=document.getElementById("start").value.trim();
+ if(!/^[0-9a-f]{1,4}$/i.test(s)){status("Invalid start address");return}
+ let p=parseInt(s,16), a=document.getElementById("program").value.trim().split(/\s+/).filter(Boolean);
+ for(let i=0;i<a.length;i++){
+   if(!/^[0-9a-f]{2}$/i.test(a[i])){status("Invalid byte "+a[i]);return}
+   cpu.mem[(p+i)&65535]=parseInt(a[i],16);
+ }
+ cpu.PC=p; addr=p; mode="DATA"; buf="";
+ status(a.length+" bytes written at "+hw(p)+"H");
+ render();
+}
+function demo(){document.getElementById("start").value="2000";document.getElementById("program").value="3E 05 06 03 80 32 00 30 76";writeProgram()}
+function go(){
+ if(confirmAux()) return;
+ if(cpu.halted){status("HLT active — press RESET first");return}
+ cpu.running=true;
+ function loop(){
+   if(!cpu.running||cpu.halted){cpu.running=false;render();if(cpu.halted)status("HLT — execution stopped");return}
+   try{execute()}catch(e){cpu.running=false;status("ERROR: "+e.message);render();return}
+   render();
+   timer=setTimeout(loop,15);
+ }
+ loop();
+}
+function stop(){cpu.running=false;if(timer)clearTimeout(timer);timer=null;render()}
+function step(){
+ if(cpu.halted){status("HLT active — press RESET first");return}
+ try{let p=cpu.PC;execute();status("STEP "+hw(p)+"H → PC "+hw(cpu.PC)+"H")}
+ catch(e){status("ERROR: "+e.message)}
+ render();
+}
+function vint(){
+ if(!cpu.inte){status("VCT INT ignored: interrupts disabled (DI/EI controls INTE)");return}
+ push(cpu.PC); cpu.PC=0x38; cpu.halted=false; cpu.inte=false;
+ status("VCT INT (RST 7.5-style) → 0038H");
+}
+function serial(){log("SER (SOD line reflects bit7 of ACC): A="+hx(cpu.A)+"H → SOD="+((cpu.A>>7)&1));status("SERIAL OUT — A="+hx(cpu.A)+"H")}
+function fill(){
+ // Real kit: no popup. Press FILL, key in the 2-digit byte value, confirm,
+ // then key in the end address and confirm — exactly like address/data entry.
+ mode="FILLVAL"; buf="";
+ status("FILL — key in 2-digit byte value, then MEMC NEXT");
+ render();
+}
+function clearMemory(){cpu.mem.fill(0);status("MEMORY CLEAR — 64K RAM cleared (RESET does NOT do this)");render()}
+function clearConsole(){document.getElementById("console").textContent=""}
+
+reset();
+</script>
+</body></html>
