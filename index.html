@@ -1,15 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="refresh" content="0; url=M8085%20PC%20SIMULATION.html">
-  <title>8085 Microprocessor Simulator</title>
+  <meta name="theme-color" content="#070707">
+  <meta name="description" content="RUN8085 — a modern browser-based 8085 microprocessor simulator and virtual training system.">
+  <title>RUN8085 — 8085 Microprocessor Simulator</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&display=swap');
+
+    :root{--bg:#070707;--surface:#101010;--line:#242424;--muted:#969696;--text:#f5f5f5;--accent:#d9ff45;--max:1240px}
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,Arial,sans-serif;overflow-x:hidden}
+    a{color:inherit;text-decoration:none}
+    .noise{position:fixed;inset:0;pointer-events:none;opacity:.035;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+    .nav{height:76px;max-width:var(--max);margin:auto;padding:0 26px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2}
+    .brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:-.04em;font-size:20px}
+    .brand-mark{width:30px;height:30px;border:1px solid #444;border-radius:9px;display:grid;place-items:center;background:#151515;font:500 12px 'DM Mono',monospace;color:var(--accent)}
+    .navlinks{display:flex;gap:28px;color:#aaa;font-size:13px}.navlinks a:hover{color:#fff}
+    .nav-cta{padding:10px 16px;border:1px solid #333;border-radius:999px;font-size:13px;font-weight:600;background:#151515}
+    .hero{min-height:calc(100vh - 76px);max-width:var(--max);margin:auto;padding:90px 26px 70px;position:relative;display:flex;align-items:center}
+    .hero:before{content:"";position:absolute;width:650px;height:650px;right:-180px;top:60px;border-radius:50%;background:radial-gradient(circle,rgba(217,255,69,.13),transparent 64%);filter:blur(8px)}
+    .hero-grid{position:relative;width:100%;display:grid;grid-template-columns:1.15fr .85fr;gap:70px;align-items:center}
+    .eyebrow{font:500 11px 'DM Mono',monospace;letter-spacing:.16em;text-transform:uppercase;color:#aaa;margin-bottom:22px}.eyebrow span{color:var(--accent)}
+    h1{font-size:clamp(64px,9vw,126px);line-height:.86;letter-spacing:-.075em;margin:0 0 30px;font-weight:800;max-width:820px}
+    h1 em{font-style:normal;color:#777}
+    .lead{font-size:17px;line-height:1.7;color:#aaa;max-width:560px;margin:0 0 34px}
+    .actions{display:flex;gap:12px;flex-wrap:wrap}.primary{display:inline-flex;align-items:center;gap:12px;background:#f4f4f4;color:#080808;padding:15px 21px;border-radius:999px;font-weight:700;font-size:14px;transition:.2s}.primary:hover{transform:translateY(-2px);background:var(--accent)}.arrow{font-size:18px}.secondary{display:inline-flex;align-items:center;padding:15px 21px;border:1px solid #333;border-radius:999px;color:#ddd;font-weight:600;font-size:14px}.secondary:hover{border-color:#666}
+    .device{position:relative;aspect-ratio:1/1.08;display:flex;align-items:center;justify-content:center}.device-glow{position:absolute;width:75%;height:75%;border-radius:50%;background:radial-gradient(circle,rgba(217,255,69,.12),transparent 65%)}
+    .chip{position:relative;width:300px;height:390px;border-radius:26px;background:linear-gradient(145deg,#202020,#0d0d0d);border:1px solid #3a3a3a;box-shadow:0 45px 100px #000, inset 0 1px #555;transform:rotate(8deg);padding:24px;display:flex;flex-direction:column;justify-content:space-between;animation:float 5s ease-in-out infinite}
+    .chip-top{display:flex;justify-content:space-between;color:#777;font:11px 'DM Mono',monospace}.intel{font-size:10px;letter-spacing:.15em}
+    .chip-core{width:205px;height:205px;margin:auto;border-radius:18px;background:repeating-linear-gradient(90deg,#121212 0 12px,#191919 12px 13px),repeating-linear-gradient(0deg,transparent 0 12px,#2a2a2a 12px 13px);border:1px solid #363636;box-shadow:inset 0 0 35px #000;display:grid;place-items:center}
+    .core-text{width:92px;height:92px;border:1px solid #4b4b4b;border-radius:50%;display:grid;place-items:center;background:#0b0b0b;box-shadow:0 0 35px rgba(217,255,69,.08);font:500 19px 'DM Mono',monospace;color:var(--accent)}
+    .chip-bottom{font:10px 'DM Mono',monospace;color:#777;display:flex;justify-content:space-between}.led{width:7px;height:7px;background:var(--accent);border-radius:50%;box-shadow:0 0 14px var(--accent)}
+    @keyframes float{50%{transform:rotate(5deg) translateY(-12px)}}
+    .strip{border-top:1px solid var(--line);border-bottom:1px solid var(--line);max-width:var(--max);margin:auto;padding:22px 26px;display:flex;justify-content:space-between;gap:20px;color:#666;font:10px 'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase}.strip strong{color:#aaa;font-weight:500}
+    section{max-width:var(--max);margin:auto;padding:125px 26px}.section-label{font:500 11px 'DM Mono',monospace;color:var(--accent);letter-spacing:.15em;text-transform:uppercase;margin-bottom:20px}.section-title{font-size:clamp(40px,6vw,78px);letter-spacing:-.065em;line-height:.95;margin:0;max-width:850px}.section-copy{color:#999;line-height:1.75;max-width:560px;margin-top:24px}
+    .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:55px}.card{min-height:270px;padding:28px;border:1px solid #242424;background:#0d0d0d;border-radius:20px;display:flex;flex-direction:column;justify-content:space-between;transition:.25s}.card:hover{border-color:#444;transform:translateY(-4px)}.number{font:11px 'DM Mono',monospace;color:#666}.card h3{font-size:22px;letter-spacing:-.04em;margin:0 0 10px}.card p{color:#888;line-height:1.65;font-size:14px;margin:0}.mono{font-family:'DM Mono',monospace}
+    .cta{padding-top:40px}.cta-box{border:1px solid #292929;border-radius:28px;padding:70px 55px;background:radial-gradient(circle at 80% 30%,rgba(217,255,69,.08),transparent 32%),#0d0d0d;display:flex;align-items:end;justify-content:space-between;gap:30px}.cta-box h2{font-size:clamp(42px,6vw,76px);line-height:.92;letter-spacing:-.065em;margin:0;max-width:700px}.cta-box p{color:#888;max-width:350px;line-height:1.6}
+    footer{max-width:var(--max);margin:auto;padding:35px 26px 45px;border-top:1px solid var(--line);display:flex;justify-content:space-between;color:#666;font-size:12px}.flag{display:inline-flex;gap:7px;align-items:center}.dot{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+    @media(max-width:850px){.navlinks{display:none}.hero{padding-top:55px}.hero-grid{grid-template-columns:1fr;gap:50px}.device{max-width:460px;margin:auto}.cards{grid-template-columns:1fr}.cta-box{flex-direction:column;align-items:flex-start;padding:45px 28px}.strip{flex-wrap:wrap}.chip{width:260px;height:340px}.chip-core{width:175px;height:175px}}
+    @media(max-width:520px){.nav{padding:0 18px}.nav-cta{padding:9px 13px}.hero,section{padding-left:18px;padding-right:18px}h1{font-size:60px}.lead{font-size:15px}.device{transform:scale(.9)}footer{padding-left:18px;padding-right:18px}}
+  </style>
 </head>
 <body>
-  <h2>Launching 8085 Simulator...</h2>
-  <a href="M8085%20PC%20SIMULATION.html">Click here to launch simulator</a>
+  <div class="noise"></div>
+  <nav class="nav">
+    <a class="brand" href="#"><span class="brand-mark">85</span>RUN8085</a>
+    <div class="navlinks"><a href="#about">About</a><a href="#features">Features</a><a href="#simulator">Simulator</a></div>
+    <a class="nav-cta" href="M8085%20PC%20SIMULATION.html">Launch →</a>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow"><span>●</span> Browser based · 8085 training system</div>
+          <h1>LEARN.<br>CODE.<br><em>RUN.</em></h1>
+          <p class="lead">A modern virtual 8085 microprocessor trainer built for experimenting with assembly programs, registers, memory and instruction execution — directly in your browser.</p>
+          <div class="actions">
+            <a class="primary" href="M8085%20PC%20SIMULATION.html">Launch Simulator <span class="arrow">↗</span></a>
+            <a class="secondary" href="#features">Explore RUN8085</a>
+          </div>
+        </div>
+        <div class="device" aria-hidden="true">
+          <div class="device-glow"></div>
+          <div class="chip">
+            <div class="chip-top"><span class="intel">8085 · CPU</span><span>1976 / 8-BIT</span></div>
+            <div class="chip-core"><div class="core-text">8085</div></div>
+            <div class="chip-bottom"><span>MICROPROCESSOR</span><span class="led"></span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="strip"><strong>RUN8085</strong><span>64K MEMORY</span><span>REGISTERS</span><span>FLAGS</span><span>STEP EXECUTION</span><span>ASSEMBLY</span></div>
+
+    <section id="about">
+      <div class="section-label">01 / The idea</div>
+      <h2 class="section-title">The classic 8085 trainer, rebuilt for the browser.</h2>
+      <p class="section-copy">RUN8085 keeps the hands-on feeling of an electronics training kit while removing the hardware barrier. Enter hexadecimal programs, inspect the CPU state, work with memory and execute instructions interactively.</p>
+    </section>
+
+    <section id="features">
+      <div class="section-label">02 / What you get</div>
+      <h2 class="section-title">Everything you need to understand the machine.</h2>
+      <div class="cards">
+        <article class="card"><span class="number">01</span><div><h3>Virtual 8085 CPU</h3><p>Work with registers, flags, program counter, stack pointer and the core execution model.</p></div></article>
+        <article class="card"><span class="number">02</span><div><h3>Memory & Hex</h3><p>Enter and inspect bytes using hexadecimal addresses and data, just like a physical trainer kit.</p></div></article>
+        <article class="card"><span class="number">03</span><div><h3>Run & Step</h3><p>Execute a program normally or step through instructions while watching the processor state change.</p></div></article>
+      </div>
+    </section>
+
+    <section class="cta" id="simulator">
+      <div class="cta-box">
+        <div><div class="section-label">03 / Start building</div><h2>Your 8085 lab is one click away.</h2></div>
+        <div><p>No installation. No hardware required. Open the virtual trainer and start experimenting.</p><a class="primary" href="M8085%20PC%20SIMULATION.html">Open 8085 Simulator <span class="arrow">↗</span></a></div>
+      </div>
+    </section>
+  </main>
+
+  <footer><span>© 2026 RUN8085</span><span class="flag"><span class="dot"></span> Developed by Rajnikant · India</span></footer>
 </body>
 </html>
-<title>8085 Microprocessor Simulator - Run Online</title>
-<meta name="description" content="Free online 8085 microprocessor simulator. Write, run, and debug 8085 assembly code directly in your browser.">
