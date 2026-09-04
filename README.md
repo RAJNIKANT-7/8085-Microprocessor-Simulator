@@ -1,3 +1,14 @@
+# 8085 Microprocessor Simulator (m8085 Virtual Trainer Kit)
+
+Developed by **RAJNIKANT-7**, this project is an interactive, browser-based Intel m8085 virtual trainer kit and 8085 microprocessor simulator.
+
+
+
+
+
+
+
+
 # 8085 Microprocessor Simulator
 
 <p align="center">
