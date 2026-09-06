@@ -1,0 +1,32 @@
+name: Minimal Code Qube branding
+on:
+  push:
+    paths:
+      - '.github/workflows/minimal-brand-update.yml'
+permissions:
+  contents: write
+jobs:
+  brand:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply minimal branding
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+          s = s.replace('RUN8085', 'CODE QUBE')
+          s = s.replace("family=DM+Mono:wght@400;500&family=Inter", "family=DM+Mono:wght@400;500&family=Inter")
+          s = s.replace("<style>\n", "<style>\n")
+          if ".brand{font-family:Sora" not in s:
+              s = s.replace(".brand{display:flex;align-items:center;gap:10px;font-weight:800;", ".brand{font-family:Sora,Inter,Arial,sans-serif;display:flex;align-items:center;gap:10px;font-weight:800;")
+              s = s.replace("family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800", "family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700;800&family=Sora:wght@500;600;700")
+          p.write_text(s, encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: add Code Qube brand identity'
+          git push
