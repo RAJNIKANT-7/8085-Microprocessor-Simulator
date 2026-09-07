@@ -73,5 +73,5 @@ async function downloadSimulator(path,filename,label){
 document.getElementById('openDownload').onclick=openDownload;document.getElementById('closeDownload').onclick=closeDownload;downloadModal.onclick=e=>{if(e.target===downloadModal)closeDownload()};document.getElementById('downloadPC').onclick=()=>downloadSimulator('M8085%20PC%20SIMULATION.html','M8085-PC-SIMULATION.html','PC simulator');document.getElementById('downloadMobile').onclick=()=>downloadSimulator('M8085%20SIMULATION%20MOBILE.html','M8085-MOBILE-SIMULATION.html','Mobile simulator');
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDownload();closeLibrary()}});
 </script>
-</body>
+<script src="/live-link.js"></script></body>
 </html>
